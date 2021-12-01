@@ -6,7 +6,7 @@ fn get_numbers() -> Vec<i32> {
         .collect()
 }
 
-fn puzzle1(numbers: &Vec<i32>) {
+fn puzzle1(numbers: &[i32]) {
     let mut deeper_count = 0;
     for i in 0..numbers.len() - 1 {
         let prev_number = numbers[i];
@@ -19,11 +19,11 @@ fn puzzle1(numbers: &Vec<i32>) {
     println!("Puzzle 1: Depth increases: {}", deeper_count);
 }
 
-fn puzzle2(numbers: &Vec<i32>) {
+fn puzzle2(numbers: &[i32]) {
     let mut deeper_count = 0;
     for i in 0..numbers.len() - 3 {
-        let total_a = numbers[i] + numbers[i + 1] + numbers[i + 2];
-        let total_b = numbers[i + 1] + numbers[i + 2] + numbers[i + 3];
+        let total_a: i32 = numbers[i..i+3].iter().sum();
+        let total_b: i32 = numbers[i+1..i+4].iter().sum();
         if total_b > total_a {
             deeper_count += 1;
         }
