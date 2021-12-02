@@ -15,11 +15,11 @@ fn get_numbers() -> Vec<i32> {
 fn count_increases_windowed(numbers: &[i32], window_size: usize) -> i32 {
     let mut count = 0;
     for i in 0..numbers.len() - window_size {
-        let total_a: i32 = numbers[i..(i + window_size)].iter().sum();
-        let total_b: i32 = numbers[(i + 1)..=(i + window_size)].iter().sum();
-        if total_b > total_a {
-            count += 1;
-        }
+        // Because the windows being compared are offset by 1 index all but the
+        // first and last numbers are the same and so can be cancelled out.
+        // Additionally casting the bool to an int lets us skip a conditional
+        // check.
+        count += (numbers[i] < numbers[i + window_size]) as i32;
     }
     count
 }
