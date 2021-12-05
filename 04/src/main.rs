@@ -4,18 +4,18 @@ struct Board {
     num_rows: usize,
     num_cols: usize,
     cells: Vec<u32>,
-    results: Vec<bool>,
+    marked_cells: Vec<bool>,
 }
 
 impl Board {
     fn new(cells: Vec<u32>, num_rows: usize) -> Self {
-        let results = vec![false; cells.len()];
-        let num_cols = results.len() / num_rows;
+        let marked_cells = vec![false; cells.len()];
+        let num_cols = cells.len() / num_rows;
         Board {
             num_rows,
             num_cols,
             cells,
-            results,
+            marked_cells,
         }
     }
 
@@ -29,7 +29,7 @@ impl Board {
             None => return false,
         };
 
-        self.results[index] = true;
+        self.marked_cells[index] = true;
 
         let col = index % self.num_cols;
         let row = index / self.num_rows;
@@ -42,7 +42,7 @@ impl Board {
         let end = start + self.num_cols;
         let mut filled = true;
         for index in start..end {
-            filled = filled && self.results[index];
+            filled = filled && self.marked_cells[index];
         }
         filled
     }
@@ -51,13 +51,13 @@ impl Board {
         let mut filled = true;
         for i in 0..self.num_rows {
             let index = self.num_cols * i + col;
-            filled = filled && self.results[index];
+            filled = filled && self.marked_cells[index];
         }
         filled
     }
 
     fn unmarked_total(&self) -> u32 {
-        self.results
+        self.marked_cells
             .iter()
             .enumerate()
             .filter(|(_i, marked)| !**marked)
@@ -65,7 +65,7 @@ impl Board {
     }
 
     fn clear(&mut self) {
-        self.results.fill(false);
+        self.marked_cells.fill(false);
     }
 }
 
