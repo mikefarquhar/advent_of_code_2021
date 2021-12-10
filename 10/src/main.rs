@@ -13,48 +13,36 @@ fn score_lines(lines: &Vec<&str>) -> (u64, u64) {
 
         for char in line.chars() {
             match char {
-                '(' | '[' | '{' | '<' => brace_stack.push(char),
-                ')' => {
-                    if brace_stack.pop().unwrap() != '(' {
-                        error_score += 3;
+                '(' => brace_stack.push(')'),
+                '[' => brace_stack.push(']'),
+                '{' => brace_stack.push('}'),
+                '<' => brace_stack.push('>'),
+                closing_brace => {
+                    if Some(closing_brace) != brace_stack.pop() {
+                        error_score += match closing_brace {
+                            ')' => 3,
+                            ']' => 57,
+                            '}' => 1197,
+                            '>' => 25137,
+                            _ => unreachable!(),
+                        };
                         break;
                     }
-                },
-                ']' => {
-                    if brace_stack.pop().unwrap() != '[' {
-                        error_score += 57;
-                        break;
-                    }
-                },
-                '}' => {
-                    if brace_stack.pop().unwrap() != '{' {
-                        error_score += 1197;
-                        break;
-                    }
-                },
-                '>' => {
-                    if brace_stack.pop().unwrap() != '<' {
-                        error_score += 25137;
-                        break;
-                    }
-                },
-                _ => (),
+                }
             };
         }
 
         if error_score == start_error {
-            let autocomplete_score = brace_stack
-                .iter()
-                .rev()
-                .fold(0, |acc, char| {
-                    acc * 5 + match char {
-                        '(' => 1,
-                        '[' => 2,
-                        '{' => 3,
-                        '<' => 4,
-                        _ => 0,
+            let autocomplete_score = brace_stack.iter().rev().fold(0, |acc, char| {
+                acc * 5
+                    + match char {
+                        ')' => 1,
+                        ']' => 2,
+                        '}' => 3,
+                        '>' => 4,
+                        _ => unreachable!(),
                     }
-                });
+            });
             autocomplete_scores.push(autocomplete_score);
         }
 
