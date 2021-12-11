@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 fn get_data() -> Vec<Vec<u8>> {
     let input_str = include_str!("./input.txt");
 
@@ -33,28 +35,28 @@ fn surrounding(x: usize, y: usize, width: usize, height: usize) -> [Option<(usiz
 fn step(
     octos: &Vec<Vec<u8>>,
     next_octos: &mut Vec<Vec<u8>>,
-    flash_stack: &mut Vec<(usize, usize)>,
+    flash_queue: &mut VecDeque<(usize, usize)>,
 ) -> u32 {
     // Phase 1 - Charge
     for y in 0..octos.len() {
         for x in 0..octos[y].len() {
             let energy = octos[y][x] + 1;
             next_octos[y][x] = energy;
-            if energy > 9 { flash_stack.push((x, y)); }
+            if energy > 9 { flash_queue.push_back((x, y)); }
         }
     }
 
     // Phase 2 - Flash
-    let mut num_flashes = flash_stack.len() as u32;
-    while flash_stack.len() > 0 {
-        let (x, y) = flash_stack.pop().unwrap();
+    let mut num_flashes = flash_queue.len() as u32;
+    while flash_queue.len() > 0 {
+        let (x, y) = flash_queue.pop_front().unwrap();
         for opt in surrounding(x, y, octos[y].len(), octos.len()) {
             match opt {
                 Some((x, y)) => {
                     let energy = next_octos[y][x] + 1;
                     if energy == 10 {
                         num_flashes += 1;
-                        flash_stack.push((x, y));
+                        flash_queue.push_back((x, y));
                     }
                     if energy <= 10 {
                         next_octos[y][x] = energy;
@@ -80,10 +82,10 @@ fn step(
 fn part1(octos: &Vec<Vec<u8>>) -> u32 {
     let mut octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
     let mut next_octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
-    let mut flash_stack = Vec::new();
+    let mut flash_queue = VecDeque::new();
 
     (0..100).fold(0, |acc, _| {
-        let num_flashes = acc + step(&octos, &mut next_octos, &mut flash_stack);
+        let num_flashes = acc + step(&octos, &mut next_octos, &mut flash_queue);
         std::mem::swap(&mut octos, &mut next_octos);
         num_flashes
     })
@@ -92,7 +94,7 @@ fn part1(octos: &Vec<Vec<u8>>) -> u32 {
 fn part2(octos: &Vec<Vec<u8>>) -> u32 {
     let mut octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
     let mut next_octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
-    let mut flash_stack = Vec::new();
+    let mut flash_queue = VecDeque::new();
 
     let mut iteration = 0;
     loop {
@@ -106,7 +108,7 @@ fn part2(octos: &Vec<Vec<u8>>) -> u32 {
             break;
         }
 
-        step(&octos, &mut &mut next_octos, &mut flash_stack);
+        step(&octos, &mut &mut next_octos, &mut flash_queue);
         std::mem::swap(&mut octos, &mut next_octos);
 
         iteration += 1;
