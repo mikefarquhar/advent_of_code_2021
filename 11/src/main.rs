@@ -1,124 +1,100 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque};
 
-fn get_data() -> Vec<Vec<u8>> {
+#[derive(Clone)]
+struct OctoGrid {
+    cells: Vec<u8>,
+    flash_queue: VecDeque<usize>,
+    width: usize,
+    height: usize,
+}
+
+impl OctoGrid {
+    fn new(cells: Vec<u8>, width: usize) -> Self {
+        let height = cells.len() / width;
+        let flash_queue = VecDeque::new();
+        Self { cells, flash_queue, width, height }
+    }
+
+    fn kernel(&self, i: usize) -> impl Iterator<Item = usize> {
+        let y = i / self.width;
+        let x = i % self.width;
+
+        let min_x = if x > 0 { x - 1 } else { x };
+        let max_x = if x < self.width - 1 { x + 1 } else { x };
+        let min_y = if y > 0 { y - 1 } else { y };
+        let max_y = if y < self.height - 1 { y + 1 } else { y };
+
+        let width = self.width;
+        (min_y..=max_y).flat_map(move |y| {
+            (min_x..=max_x).map(move |x| y * width + x)
+        })
+    }
+
+    fn step(&mut self) -> u32 {
+        // Phase 1 - Charge
+        for i in 0..self.cells.len() {
+            let energy = self.cells[i];
+            if energy == 9 {
+                self.flash_queue.push_back(i);
+            }
+            self.cells[i] = (energy + 1) % 10;
+        }
+
+        // Phase 2 - Flash
+        let mut num_flashes = self.flash_queue.len() as u32;
+        while self.flash_queue.len() > 0 {
+            let center = self.flash_queue.pop_front().unwrap();
+            for i in self.kernel(center) {
+                let energy = self.cells[i];
+                if energy == 9 {
+                    num_flashes += 1;
+                    self.flash_queue.push_back(i);
+                    self.cells[i] = 0;
+                }
+                else if energy > 0 {
+                    self.cells[i] = energy + 1;
+                }
+            }
+        }
+
+        num_flashes
+    }
+
+    fn all_flashed(&self) -> bool {
+        self.cells.iter().fold(0, |acc, &curr| acc + curr as u32) == 0
+    }
+}
+
+fn get_data() -> OctoGrid {
     let input_str = include_str!("./input.txt");
 
-    input_str
+    let cells: Vec<u8> = input_str
         .lines()
-        .map(|line| {
-            line
-                .chars()
-                .map(|char| char.to_digit(10).unwrap() as u8)
-                .collect()
-        })
-        .collect()
+        .flat_map(|line| line.chars().map(|char| char.to_digit(10).unwrap() as u8))
+        .collect();
+
+    let width = input_str.lines().next().unwrap().len();
+
+    OctoGrid::new(cells, width)
 }
 
-fn surrounding(x: usize, y: usize, width: usize, height: usize) -> [Option<(usize, usize)>; 8] {
-    let above = y > 0;
-    let below = y < height - 1;
-    let left = x > 0;
-    let right = x < width - 1;
-
-    [
-        if above && left { Some((x - 1, y - 1)) } else { None },
-        if above { Some((x, y - 1)) } else { None },
-        if above && right { Some((x + 1, y - 1)) } else { None },
-        if left { Some((x - 1, y)) } else { None },
-        if right { Some((x + 1, y)) } else { None },
-        if below && left { Some((x - 1, y + 1)) } else { None },
-        if below { Some((x, y + 1)) } else { None },
-        if below && right { Some((x + 1, y + 1)) } else { None },
-    ]
+fn part1(octos: &OctoGrid) -> u32 {
+    let mut octos = octos.clone();
+    (0..100).fold(0, |acc, _| acc + octos.step())
 }
 
-fn step(
-    octos: &Vec<Vec<u8>>,
-    next_octos: &mut Vec<Vec<u8>>,
-    flash_queue: &mut VecDeque<(usize, usize)>,
-) -> u32 {
-    // Phase 1 - Charge
-    for y in 0..octos.len() {
-        for x in 0..octos[y].len() {
-            let energy = octos[y][x] + 1;
-            next_octos[y][x] = energy;
-            if energy > 9 { flash_queue.push_back((x, y)); }
-        }
+fn part2(octos: &OctoGrid) -> u32 {
+    let mut octos = octos.clone();
+    let mut iterations = 0;
+    while !octos.all_flashed() {
+        octos.step();
+        iterations += 1;
     }
-
-    // Phase 2 - Flash
-    let mut num_flashes = flash_queue.len() as u32;
-    while flash_queue.len() > 0 {
-        let (x, y) = flash_queue.pop_front().unwrap();
-        for opt in surrounding(x, y, octos[y].len(), octos.len()) {
-            match opt {
-                Some((x, y)) => {
-                    let energy = next_octos[y][x] + 1;
-                    if energy == 10 {
-                        num_flashes += 1;
-                        flash_queue.push_back((x, y));
-                    }
-                    if energy <= 10 {
-                        next_octos[y][x] = energy;
-                    }
-                },
-                None => (),
-            }
-        }
-    }
-
-    // Phase 3 - Reset
-    for y in 0..next_octos.len() {
-        for x in 0..next_octos[y].len() {
-            if next_octos[y][x] > 9 {
-                next_octos[y][x] = 0;
-            }
-        }
-    }
-    
-    num_flashes
-}
-
-fn part1(octos: &Vec<Vec<u8>>) -> u32 {
-    let mut octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
-    let mut next_octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
-    let mut flash_queue = VecDeque::new();
-
-    (0..100).fold(0, |acc, _| {
-        let num_flashes = acc + step(&octos, &mut next_octos, &mut flash_queue);
-        std::mem::swap(&mut octos, &mut next_octos);
-        num_flashes
-    })
-}
-
-fn part2(octos: &Vec<Vec<u8>>) -> u32 {
-    let mut octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
-    let mut next_octos: Vec<Vec<u8>> = octos.iter().map(|row| row.clone()).collect();
-    let mut flash_queue = VecDeque::new();
-
-    let mut iteration = 0;
-    loop {
-        let cells_total = octos
-            .iter()
-            .flatten()
-            .map(|cell| *cell as u32)
-            .sum::<u32>();
-
-        if cells_total == 0 {
-            break;
-        }
-
-        step(&octos, &mut &mut next_octos, &mut flash_queue);
-        std::mem::swap(&mut octos, &mut next_octos);
-
-        iteration += 1;
-    }
-
-    iteration
+    iterations
 }
 
 fn main() {
     let octos = get_data();
     println!("Num flashes: {}", part1(&octos));
-    println!("Num flashes: {}", part2(&octos));
+    println!("Num iterations for sync: {}", part2(&octos));
 }
